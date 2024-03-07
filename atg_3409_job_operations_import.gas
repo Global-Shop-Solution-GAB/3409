@@ -1,0 +1,188 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+
+V.Local.iHndl.Declare(Long)
+V.Local.iHndlB.Declare(Long)
+V.Local.sDirectory.Declare(String)
+V.Local.sOpenFile.Declare(String)
+V.Local.sClosedDir.Declare(String)
+V.Local.sClosedFile.Declare(String)
+V.Local.sFileList.Declare(String)
+V.Local.sFiles.Declare(String)
+V.Local.sFile.Declare(String)
+V.Local.iCount.Declare(Long)
+V.Local.iLineCount.Declare(Long)
+V.Local.sLineElements.Declare(String)
+V.Local.sData.Declare(String)
+V.Local.sPO.Declare(String)
+V.Local.sValue.Declare(String)
+V.Local.sLastPO.Declare(String)
+V.Local.sPart.Declare(String)
+V.Local.fQTY.Declare(Float)
+V.Local.sJH.Declare(String)
+V.Local.sJO.Declare(String)
+V.Local.iUnits.Declare(Float)
+V.Local.sJob.Declare(String)
+V.local.sSuffix.Declare(String)
+V.Local.bHere.Declare(Boolean)
+V.Local.sPrefix.Declare(String)
+V.Local.bJob.Declare(Boolean)
+V.Local.bSched.Declare(Boolean)
+V.Local.sSplit.Declare(String)
+
+F.Intrinsic.String.Concat(V.Ambient.DblQuote,V.Ambient.DblQuote,",",V.Ambient.DblQuote,V.Ambient.DblQuote,V.Local.sSplit)
+
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+F.Intrinsic.File.GetHandle(V.Local.iHndl)
+
+V.Local.sDirectory.Set("\\gsserver\globapps\global\Wizardfiles\received\")
+V.Local.sClosedDir.Set("\\gsserver\globapps\global\Wizardfiles\processed\")
+
+'V.Local.sDirectory.Set("c:\Global\Plugins\GAB\GAS\WPI\Files\")
+'F.Intrinsic.String.Concat(V.Local.sDirectory,"Processed\",V.Local.sClosedDir)
+
+	F.Intrinsic.File.DirExists(V.Local.sClosedDir,V.Local.bHere)
+		F.Intrinsic.Control.If(V.Local.bHere,=,False)
+			F.Intrinsic.File.CreateDir(V.Local.sClosedDir)
+		F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.File.GetFileList(V.Local.sDirectory,2,V.Local.sFileList)
+	F.Intrinsic.String.Split(V.Local.sFileList,":",V.Local.sFiles)
+		F.Intrinsic.Control.If(V.Local.sFileList(0),=,"")
+			F.Intrinsic.UI.Msgbox("No Files Available For Import")
+			F.Intrinsic.Control.End
+		F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.For(V.Local.iCount,V.Local.sFiles.LBound,V.Local.sFiles.UBound,1)
+
+V.Local.bJob.Set(False)
+
+F.Intrinsic.String.Split(V.Local.sFiles(v.Local.iCount),".",V.Local.sPrefix)
+F.Intrinsic.String.Left(V.Local.sPrefix(0),2,V.Local.sPrefix(0))
+F.Intrinsic.Control.If(V.Local.sPrefix(0).UCase,=,"OD")
+F.Intrinsic.Control.AndIf(V.Local.sPrefix(1).UCase,=,"CSV")
+
+			F.Intrinsic.String.Concat(V.Local.sDirectory,V.Local.sFiles(v.Local.iCount),V.Local.sOpenFile)
+			F.Intrinsic.String.Concat(V.Local.sClosedDir,V.Local.sFiles(v.Local.iCount),V.Local.sClosedFile)
+			F.Intrinsic.File.File2String(V.Local.sOpenFile,V.Local.sFile)
+
+		F.Intrinsic.String.Split(V.Local.sFile,V.Ambient.NewLine,V.Local.sLineElements)
+
+		F.Intrinsic.Control.For(V.Local.iLineCount,V.Local.sLineElements.LBound,V.Local.sLineElements.UBound,1)
+'			F.Intrinsic.String.Split(V.Local.sLineElements(V.Local.iLineCount),",",V.Local.sData)
+			F.Intrinsic.String.Split(V.Local.sLineElements(V.Local.iLineCount),V.Local.sSplit,V.Local.sData)
+				F.Intrinsic.Control.If(V.Local.sData(0),<>,"")
+
+						V.Local.sValue.Set(V.Local.sData(0))
+						F.Intrinsic.String.Trim(V.Local.sValue,V.Local.sValue)
+						F.Intrinsic.String.Split(V.Local.sValue,V.Ambient.DblQuote,V.Local.sValue)
+					V.Local.sPO.Set(V.Local.sValue(1))
+						V.Local.sValue.Set(V.Local.sData(3))
+						F.Intrinsic.String.Trim(V.Local.sValue,V.Local.sValue)
+						F.Intrinsic.String.Split(V.Local.sValue,V.Ambient.DblQuote,V.Local.sValue)
+					V.Local.iUnits.Set(V.Local.sValue(0))
+					V.Local.sPart.Set(V.Local.sData(1))
+						F.Intrinsic.String.Trim(V.Local.sPart,V.Local.sPart)
+
+					F.Intrinsic.Math.Mult(V.Local.iUnits,28,V.Local.iUnits)
+
+					F.Intrinsic.String.Concat("select distinct JOB,SUFFIX from JOB_HEADER where CUSTOMER_PO='",V.Local.sPO,"'",V.Local.sJH)
+					F.ODBC.Connection!con.OpenRecordsetRO("rstJH",V.Local.sJH)
+
+						F.Intrinsic.Control.If(V.ODBC.con!rstJH.EOF,=,False)
+							V.Local.bJob.Set(True)
+							V.Local.sJob.Set(V.ODBC.con!rstJH.FieldValTrim!JOB)
+							V.Local.sSuffix.Set(V.ODBC.con!rstJH.FieldVal!SUFFIX)
+				
+							F.Intrinsic.String.Concat("select UNITS from JOB_OPERATIONS where LMO='M' and JOB='",V.Local.sJob,"'and SUFFIX='",V.local.sSuffix,"'and PART='",V.Local.sPart,"'",V.Local.sJO)
+							F.ODBC.Connection!con.OpenRecordsetRW("rstJO",V.Local.sJO)
+								F.Intrinsic.Control.If(V.ODBC.con!rstJO.EOF,=,False)
+									F.ODBC.con!rstJO.Set!UNITS(V.Local.iUnits)
+									F.ODBC.con!rstJO.Update
+								F.Intrinsic.Control.EndIf
+							F.ODBC.con!rstJO.Close
+
+						F.Intrinsic.Control.EndIf
+					F.ODBC.con!rstJH.Close
+				F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.Next(V.Local.iLineCount)
+
+		F.Intrinsic.Control.For(V.Local.iLineCount,V.Local.sLineElements.LBound,V.Local.sLineElements.UBound,1)
+			F.Intrinsic.String.Split(V.Local.sLineElements(V.Local.iLineCount),",",V.Local.sData)
+
+				F.Intrinsic.Control.If(V.Local.sData(0),<>,"")
+
+					V.Local.sPO.Set(V.Local.sData(0))
+						F.Intrinsic.String.Trim(V.Local.sPO,V.Local.sPO)
+
+				F.Intrinsic.Control.If(V.Local.sPO,<>,V.Local.sLastPO)
+					V.Local.sLastPO.Set(V.Local.sPO)
+				F.Intrinsic.Control.Else
+					F.Intrinsic.Control.Next(V.Local.iLineCount)
+				F.Intrinsic.Control.EndIf
+
+					F.Intrinsic.String.Concat("select JOB,SUFFIX from JOB_HEADER where CUSTOMER_PO='",V.Local.sPO,"'",V.Local.sJH)
+					F.ODBC.Connection!con.OpenRecordsetRO("rstJH",V.Local.sJH)
+						F.Intrinsic.Control.If(V.ODBC.con!rstJH.EOF,=,False)
+							V.Local.sJob.Set(V.ODBC.con!rstJH.FieldValTrim!JOB)
+							V.Local.sSuffix.Set(V.ODBC.con!rstJH.FieldVal!SUFFIX)
+				
+							F.Intrinsic.String.Concat("delete from JOB_OPERATIONS where JOB='",V.Local.sJob,"'and SUFFIX='",V.Local.sSuffix,"'and LMO='M' and PART <> '' and UNITS='0' ",V.Local.sJO)
+							F.ODBC.Connection!con.Execute(V.Local.sJO)
+
+						F.Intrinsic.Control.EndIf
+					F.ODBC.con!rstJH.Close
+				F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.Next(V.Local.iLineCount)
+
+F.Intrinsic.Control.If(V.Local.bJob,=,True)
+V.Local.bSched.Set(True)
+F.Intrinsic.File.GetHandle(V.Local.iHndlB)
+F.Intrinsic.File.CopyFile(V.Local.sOpenFile,V.Local.sClosedFile)
+F.Intrinsic.File.DeleteFile(V.Local.sOpenFile)
+F.Intrinsic.File.CloseFile(V.Local.iHndlB)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.File.CloseFile(V.Local.iHndl)
+
+F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.Next(V.Local.iCount)
+
+F.ODBC.Connection!con.close
+
+F.Intrinsic.File.GetFileList(V.Local.sDirectory,2,V.Local.sFileList)
+	F.Intrinsic.Control.For(V.Local.iCount,V.Local.sFiles.LBound,V.Local.sFiles.UBound,1)
+
+		F.Intrinsic.String.Split(V.Local.sFiles(v.Local.iCount),".",V.Local.sPrefix)
+		F.Intrinsic.Control.If(V.Local.sPrefix(1).UCase,=,"DON")
+
+			F.Intrinsic.String.Concat(V.Local.sDirectory,V.Local.sFiles(v.Local.iCount),V.Local.sOpenFile)
+			F.Intrinsic.String.Concat(V.Local.sClosedDir,V.Local.sFiles(v.Local.iCount),V.Local.sClosedFile)
+
+			F.Intrinsic.File.GetHandle(V.Local.iHndlB)
+				F.Intrinsic.File.CopyFile(V.Local.sOpenFile,V.Local.sClosedFile)
+				F.Intrinsic.File.DeleteFile(V.Local.sOpenFile)
+			F.Intrinsic.File.CloseFile(V.Local.iHndlB)
+
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iCount)
+
+F.Intrinsic.Control.If(V.Local.bSched,=,True)
+		F.global.general.callwrappersync(50,"FIXSCHED/C")
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.End
+
+Program.Sub.Main.End
+
+
